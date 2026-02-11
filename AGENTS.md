@@ -1,0 +1,2 @@
+- Keep the minimalistic development style
+- Less dependencies, the better
