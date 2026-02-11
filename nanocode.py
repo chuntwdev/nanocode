@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """nanocode - minimal claude code alternative"""
 
-import glob as globlib, json, os, re, subprocess, urllib.request
+import glob as globlib, importlib, json, os, re, subprocess, urllib.request
 
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/messages" if OPENROUTER_KEY else "https://api.anthropic.com/v1/messages"
@@ -16,6 +16,15 @@ BLUE, CYAN, GREEN, YELLOW, RED = (
     "\033[33m",
     "\033[31m",
 )
+
+try:
+    _rich_console_mod = importlib.import_module("rich.console")
+    _rich_markdown_mod = importlib.import_module("rich.markdown")
+    RICH_CONSOLE = _rich_console_mod.Console(record=True, force_terminal=True)
+    RICH_MARKDOWN = _rich_markdown_mod.Markdown
+except Exception:
+    RICH_CONSOLE = None
+    RICH_MARKDOWN = None
 
 
 # --- Tool implementations ---
@@ -194,7 +203,11 @@ def separator():
 
 
 def render_markdown(text):
-    return re.sub(r"\*\*(.+?)\*\*", f"{BOLD}\\1{RESET}", text)
+    if not RICH_CONSOLE or not RICH_MARKDOWN:
+        return re.sub(r"\*\*(.+?)\*\*", f"{BOLD}\\1{RESET}", text)
+    with RICH_CONSOLE.capture() as capture:
+        RICH_CONSOLE.print(RICH_MARKDOWN(text))
+    return capture.get().rstrip("\n")
 
 
 def main():
