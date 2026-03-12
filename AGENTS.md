@@ -1,2 +1,3 @@
-- Keep the minimalistic development style
-- Less dependencies, the better
+- Keep the minimalistic development style.
+- Less dependencies, the better.
+- this python project uses uv.

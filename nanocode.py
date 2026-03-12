@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """nanocode - minimal claude code alternative"""
 
-import glob as globlib, importlib, json, os, re, subprocess, urllib.request
+import glob as globlib, importlib, json, os, re, subprocess, sys, urllib.request
 
 
 def load_env(path=".env"):
@@ -16,6 +16,9 @@ def load_env(path=".env"):
         pass
 
 
+CONFIG_PATH = os.path.expanduser("~/.config/nanocode/.env")
+
+load_env(CONFIG_PATH)
 load_env()
 
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
@@ -40,6 +43,77 @@ try:
 except Exception:
     RICH_CONSOLE = None
     RICH_MARKDOWN = None
+
+
+# --- Setup / onboarding ---
+
+
+def fetch_models(provider, api_key):
+    if provider == "anthropic":
+        url = "https://api.anthropic.com/v1/models?limit=1000"
+        headers = {"x-api-key": api_key, "anthropic-version": "2023-06-01"}
+    else:
+        url = "https://openrouter.ai/api/v1/models"
+        headers = {"Authorization": f"Bearer {api_key}"}
+    req = urllib.request.Request(url, headers=headers)
+    data = json.loads(urllib.request.urlopen(req).read())
+    return sorted(m["id"] for m in data.get("data", []))
+
+
+def pick_model(models):
+    while True:
+        query = input(f"\n  {BOLD}Filter{RESET} (or Enter to show all): ").strip().lower()
+        filtered = [m for m in models if query in m.lower()] if query else models
+        if not filtered:
+            print(f"  {DIM}No matches, try again.{RESET}")
+            continue
+        for i, m in enumerate(filtered[:20], 1):
+            print(f"    {BOLD}{i:>2}){RESET} {m}")
+        if len(filtered) > 20:
+            print(f"    {DIM}... +{len(filtered) - 20} more, narrow your filter{RESET}")
+            continue
+        choice = input(f"\n  {BOLD}Select{RESET} [1]: ").strip()
+        try:
+            idx = int(choice) - 1 if choice else 0
+        except ValueError:
+            continue
+        if 0 <= idx < len(filtered):
+            return filtered[idx]
+
+
+def setup():
+    print(f"\n  {BOLD}nanocode setup{RESET}\n")
+    print(f"  {BOLD}1){RESET} Anthropic")
+    print(f"  {BOLD}2){RESET} OpenRouter")
+    choice = input(f"\n  Provider [1]: ").strip()
+    provider = "openrouter" if choice == "2" else "anthropic"
+
+    key_name = "OPENROUTER_API_KEY" if provider == "openrouter" else "ANTHROPIC_API_KEY"
+    api_key = input(f"  {key_name}: ").strip()
+    if not api_key:
+        print(f"\n  {RED}No API key provided.{RESET}")
+        return None
+
+    print(f"\n  {DIM}Fetching models...{RESET}")
+    try:
+        models = fetch_models(provider, api_key)
+    except Exception as e:
+        print(f"\n  {RED}Failed to fetch models: {e}{RESET}")
+        return None
+
+    if not models:
+        print(f"\n  {RED}No models found.{RESET}")
+        return None
+
+    print(f"  {GREEN}Found {len(models)} models{RESET}")
+    model = pick_model(models)
+
+    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    with open(CONFIG_PATH, "w") as f:
+        f.write(f"{key_name}={api_key}\nMODEL={model}\n")
+
+    print(f"\n  {GREEN}Saved to {CONFIG_PATH}{RESET}\n")
+    return key_name, api_key, model
 
 
 # --- Tool implementations ---
@@ -226,6 +300,25 @@ def render_markdown(text):
 
 
 def main():
+    global OPENROUTER_KEY, API_URL, MODEL
+
+    needs_setup = "--setup" in sys.argv or (
+        not os.path.exists(CONFIG_PATH)
+        and not os.environ.get("ANTHROPIC_API_KEY")
+        and not os.environ.get("OPENROUTER_API_KEY")
+    )
+
+    if needs_setup:
+        result = setup()
+        if not result:
+            return
+        key_name, api_key, model = result
+        os.environ[key_name] = api_key
+        os.environ["MODEL"] = model
+        OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
+        API_URL = "https://openrouter.ai/api/v1/messages" if OPENROUTER_KEY else "https://api.anthropic.com/v1/messages"
+        MODEL = model
+
     print(f"{BOLD}nanocode{RESET} | {DIM}{MODEL} ({'OpenRouter' if OPENROUTER_KEY else 'Anthropic'}) | {os.getcwd()}{RESET}\n")
     messages = []
     system_prompt = f"Concise coding assistant. cwd: {os.getcwd()}"
