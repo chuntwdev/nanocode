@@ -15,8 +15,16 @@ Built using Claude Code, then used to build itself.
 
 ## Usage
 
+Create a `.env` file in the project root:
+
+```
+ANTHROPIC_API_KEY=your-key
+MODEL=claude-sonnet-4-6
+```
+
+Then run:
+
 ```bash
-export ANTHROPIC_API_KEY="your-key"
 python nanocode.py
 ```
 
@@ -24,18 +32,18 @@ python nanocode.py
 
 Use [OpenRouter](https://openrouter.ai) to access any model:
 
-```bash
-export OPENROUTER_API_KEY="your-key"
-python nanocode.py
+```
+OPENROUTER_API_KEY=your-key
 ```
 
 To use a different model:
 
-```bash
-export OPENROUTER_API_KEY="your-key"
-export MODEL="openai/gpt-5.2"
-python nanocode.py
 ```
+OPENROUTER_API_KEY=your-key
+MODEL=openai/gpt-5.2
+```
+
+Environment variables also work and take precedence over `.env`.
 
 ## Commands
 
@@ -44,14 +52,14 @@ python nanocode.py
 
 ## Tools
 
-| Tool | Description |
-|------|-------------|
-| `read` | Read file with line numbers, offset/limit |
-| `write` | Write content to file |
-| `edit` | Replace string in file (must be unique) |
-| `glob` | Find files by pattern, sorted by mtime |
-| `grep` | Search files for regex |
-| `bash` | Run shell command |
+| Tool    | Description                               |
+| ------- | ----------------------------------------- |
+| `read`  | Read file with line numbers, offset/limit |
+| `write` | Write content to file                     |
+| `edit`  | Replace string in file (must be unique)   |
+| `glob`  | Find files by pattern, sorted by mtime    |
+| `grep`  | Search files for regex                    |
+| `bash`  | Run shell command                         |
 
 ## Example
 
